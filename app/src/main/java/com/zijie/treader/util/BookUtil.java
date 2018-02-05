@@ -3,15 +3,14 @@ package com.zijie.treader.util;
 import android.content.ContentValues;
 import android.os.Environment;
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.zijie.treader.bean.Cache;
 import com.zijie.treader.db.BookCatalogue;
 import com.zijie.treader.db.BookList;
 
 import org.litepal.crud.DataSupport;
-import org.mozilla.universalchardet.UniversalDetector;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -21,6 +20,7 @@ import java.io.OutputStreamWriter;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * Created by Administrator on 2016/8/11 0011.
@@ -29,6 +29,7 @@ public class BookUtil {
     private static final String cachedPath = Environment.getExternalStorageDirectory() + "/treader/";
     //存储的字符数
     public static final int cachedSize = 30000;
+    private static final String TAG = "BookUtil";
 //    protected final ArrayList<WeakReference<char[]>> myArray = new ArrayList<>();
 
     protected final ArrayList<Cache> myArray = new ArrayList<>();
@@ -42,9 +43,9 @@ public class BookUtil {
     private long position;
     private BookList bookList;
 
-    public BookUtil(){
+    public BookUtil() {
         File file = new File(cachedPath);
-        if (!file.exists()){
+        if (!file.exists()) {
             file.mkdir();
         }
     }
@@ -61,21 +62,21 @@ public class BookUtil {
         }
     }
 
-    private void cleanCacheFile(){
+    private void cleanCacheFile() {
         File file = new File(cachedPath);
-        if (!file.exists()){
+        if (!file.exists()) {
             file.mkdir();
-        }else{
+        } else {
             File[] files = file.listFiles();
-            for (int i = 0; i < files.length;i++){
+            for (int i = 0; i < files.length; i++) {
                 files[i].delete();
             }
         }
     }
 
-    public int next(boolean back){
+    public int next(boolean back) {
         position += 1;
-        if (position > bookLen){
+        if (position > bookLen) {
             position = bookLen;
             return -1;
         }
@@ -86,18 +87,18 @@ public class BookUtil {
         return result;
     }
 
-    public char[] nextLine(){
-        if (position >= bookLen){
+    public char[] nextLine() {
+        if (position >= bookLen) {
             return null;
         }
         String line = "";
-        while (position < bookLen){
+        while (position < bookLen) {
             int word = next(false);
-            if (word == -1){
+            if (word == -1) {
                 break;
             }
             char wordChar = (char) word;
-            if ((wordChar + "").equals("\r") && (((char)next(true)) + "").equals("\n")){
+            if ((wordChar + "").equals("\r") && (((char) next(true)) + "").equals("\n")) {
                 next(false);
                 break;
             }
@@ -106,18 +107,18 @@ public class BookUtil {
         return line.toCharArray();
     }
 
-    public char[] preLine(){
-        if (position <= 0){
+    public char[] preLine() {
+        if (position <= 0) {
             return null;
         }
         String line = "";
-        while (position >= 0){
+        while (position >= 0) {
             int word = pre(false);
-            if (word == -1){
+            if (word == -1) {
                 break;
             }
             char wordChar = (char) word;
-            if ((wordChar + "").equals("\n") && (((char)pre(true)) + "").equals("\r")){
+            if ((wordChar + "").equals("\n") && (((char) pre(true)) + "").equals("\r")) {
                 pre(false);
 //                line = "\r\n" + line;
                 break;
@@ -127,15 +128,15 @@ public class BookUtil {
         return line.toCharArray();
     }
 
-    public char current(){
+    public char current() {
 //        int pos = (int) (position % cachedSize);
 //        int cachePos = (int) (position / cachedSize);
         int cachePos = 0;
         int pos = 0;
         int len = 0;
-        for (int i = 0;i < myArray.size();i++){
+        for (int i = 0; i < myArray.size(); i++) {
             long size = myArray.get(i).getSize();
-            if (size + len - 1 >= position){
+            if (size + len - 1 >= position) {
                 cachePos = i;
                 pos = (int) (position - len);
                 break;
@@ -147,9 +148,9 @@ public class BookUtil {
         return charArray[pos];
     }
 
-    public int pre(boolean back){
+    public int pre(boolean back) {
         position -= 1;
-        if (position < 0){
+        if (position < 0) {
             position = 0;
             return -1;
         }
@@ -160,11 +161,11 @@ public class BookUtil {
         return result;
     }
 
-    public long getPosition(){
+    public long getPosition() {
         return position;
     }
 
-    public void setPostition(long position){
+    public void setPostition(long position) {
         this.position = position;
     }
 
@@ -176,22 +177,22 @@ public class BookUtil {
                 m_strCharsetName = "utf-8";
             }
             ContentValues values = new ContentValues();
-            values.put("charset",m_strCharsetName);
-            DataSupport.update(BookList.class,values,bookList.getId());
-        }else{
+            values.put("charset", m_strCharsetName);
+            DataSupport.update(BookList.class, values, bookList.getId());
+        } else {
             m_strCharsetName = bookList.getCharset();
         }
 
         File file = new File(bookPath);
-        InputStreamReader reader = new InputStreamReader(new FileInputStream(file),m_strCharsetName);
+        InputStreamReader reader = new InputStreamReader(new FileInputStream(file), m_strCharsetName);
         int index = 0;
         bookLen = 0;
         directoryList.clear();
         myArray.clear();
-        while (true){
+        while (true) {
             char[] buf = new char[cachedSize];
             int result = reader.read(buf);
-            if (result == -1){
+            if (result == -1) {
                 reader.close();
                 break;
             }
@@ -199,10 +200,10 @@ public class BookUtil {
             String bufStr = new String(buf);
 //            bufStr = bufStr.replaceAll("\r\n","\r\n\u3000\u3000");
 //            bufStr = bufStr.replaceAll("\u3000\u3000+[ ]*","\u3000\u3000");
-            bufStr = bufStr.replaceAll("\r\n+\\s*","\r\n\u3000\u3000");
+            bufStr = bufStr.replaceAll("\r\n+\\s*", "\r\n\u3000\u3000");
 //            bufStr = bufStr.replaceAll("\r\n[ {0,}]","\r\n\u3000\u3000");
 //            bufStr = bufStr.replaceAll(" ","");
-            bufStr = bufStr.replaceAll("\u0000","");
+            bufStr = bufStr.replaceAll("\u0000", "");
             buf = bufStr.toCharArray();
             bookLen += buf.length;
 
@@ -216,7 +217,7 @@ public class BookUtil {
 //            myArray.set(index,);
             try {
                 File cacheBook = new File(fileName(index));
-                if (!cacheBook.exists()){
+                if (!cacheBook.exists()) {
                     cacheBook.createNewFile();
                 }
                 final OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(fileName(index)), "UTF-16LE");
@@ -225,10 +226,10 @@ public class BookUtil {
             } catch (IOException e) {
                 throw new RuntimeException("Error during writing " + fileName(index));
             }
-            index ++;
+            index++;
         }
 
-        new Thread(){
+        new Thread() {
             @Override
             public void run() {
                 getChapter();
@@ -236,16 +237,20 @@ public class BookUtil {
         }.start();
     }
 
+    private static String[] CHAPTER_REGEXS = {"(^\\s*第)(.{1,9})[章节卷集部篇回](\\s*)", "[零一二三四五六七八九十百千]{1,9}.*", "\\d{1,9}.*", "[^，。“”…？；—-]{1,10}"};
+
     //获取章节
-    public synchronized void getChapter(){
-        try {
+    public synchronized void getChapter() {
+        for (String regex : CHAPTER_REGEXS) {
+//            String regex = "(^\\s*第)(.{1,9})[章节卷集部篇回](\\s*)";
+            Pattern pattern = Pattern.compile(regex);
             long size = 0;
             for (int i = 0; i < myArray.size(); i++) {
                 char[] buf = block(i);
                 String bufStr = new String(buf);
                 String[] paragraphs = bufStr.split("\r\n");
                 for (String str : paragraphs) {
-                    if (str.length() <= 30 && (str.matches(".*第.{1,8}章.*") || str.matches(".*第.{1,8}节.*"))) {
+                    if (str.length() <= 100 && (pattern.matcher(str).find())) {
                         BookCatalogue bookCatalogue = new BookCatalogue();
                         bookCatalogue.setBookCatalogueStartPos(size);
                         bookCatalogue.setBookCatalogue(str);
@@ -254,40 +259,45 @@ public class BookUtil {
                     }
                     if (str.contains("\u3000\u3000")) {
                         size += str.length() + 2;
-                    }else if (str.contains("\u3000")){
+                    } else if (str.contains("\u3000")) {
                         size += str.length() + 1;
-                    }else {
+                    } else {
                         size += str.length();
                     }
                 }
             }
-        }catch (Exception e){
-            e.printStackTrace();
+            if (directoryList.isEmpty()) {
+                Log.d(TAG, "not match regex " + regex + " try next");
+                continue;
+            } else {
+                Log.d(TAG, "total chapters " + directoryList.size() + " regex " + regex);
+                break;
+            }
         }
     }
 
-    public List<BookCatalogue> getDirectoryList(){
+    public List<BookCatalogue> getDirectoryList() {
         return directoryList;
     }
 
-    public long getBookLen(){
+    public long getBookLen() {
         return bookLen;
     }
 
     protected String fileName(int index) {
-        return cachedPath + bookName + index ;
+        return cachedPath + bookName + index;
     }
 
     //获取书本缓存
     public char[] block(int index) {
-        if (myArray.size() == 0){
+        if (myArray.size() == 0) {
             return new char[1];
         }
         char[] block = myArray.get(index).getData().get();
         if (block == null) {
             try {
                 File file = new File(fileName(index));
-                int size = (int)file.length();
+                int size = (int) file.length();
                 if (size < 0) {
                     throw new RuntimeException("Error during reading " + fileName(index));
                 }
